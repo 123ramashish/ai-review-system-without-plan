@@ -207,12 +207,12 @@ export default function DashboardPage() {
                       >
                         <QrCode className="w-3.5 h-3.5" /> QR Code
                       </button>
-                      <button
+                      {/* <button
                         onClick={() => handleDelete(business._id)}
                         className="p-2 rounded-lg border border-surface-border hover:border-red-500/50 hover:text-red-400 text-gray-500 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 </div>
