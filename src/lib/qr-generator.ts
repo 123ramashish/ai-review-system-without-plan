@@ -9,7 +9,6 @@ export async function generateQRCode(
   const qrDataUrl = await QRCode.toDataURL(reviewUrl, {
     errorCorrectionLevel: "H",
     type: "image/png",
-    quality: 0.95,
     margin: 2,
     color: {
       dark: "#0f0f1a",
