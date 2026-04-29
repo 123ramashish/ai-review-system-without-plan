@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const qrToken = uuidv4();
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      process.env.NEXT_PUBLIC_APP_URL || "https://ai-review-system-without-plan.vercel.app/";
 
     // Generate QR code image
     const qrCode = await generateQRCode(qrToken, appUrl);
