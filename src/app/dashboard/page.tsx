@@ -117,12 +117,12 @@ export default function DashboardPage() {
               <span className="text-gray-600">/</span>
               <span className="text-gray-400 text-sm">Dashboard</span>
             </div>
-            <button
+            {/* <button
               onClick={() => setShowModal(true)}
               className="btn-primary flex items-center gap-2 text-sm py-2 px-4"
             >
               <Plus className="w-4 h-4" /> Add Business
-            </button>
+            </button> */}
           </div>
         </header>
 
