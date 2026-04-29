@@ -7,6 +7,7 @@ export interface IBusiness extends Document {
   googleReviewUrl: string;
   qrCode?: string;
   qrToken: string;
+  ownerId: mongoose.Types.ObjectId; // Company admin who owns this business
   totalScans: number;
   totalSubmissions: number;
   rating?: number;
@@ -57,6 +58,12 @@ const BusinessSchema = new Schema<IBusiness>(
       type: String,
       required: true,
       unique: true,
+      index: true,
+    },
+    ownerId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
       index: true,
     },
     totalScans: {

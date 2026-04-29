@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, QrCode, Star, TrendingUp, Download, Trash2, ExternalLink, BarChart3, Store } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Plus, QrCode, Star, TrendingUp, Download, Trash2, ExternalLink, BarChart3, Store, LogOut, User } from "lucide-react";
 import Link from "next/link";
 
 interface Business {
@@ -31,6 +33,8 @@ const CATEGORIES = [
 ];
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -39,25 +43,26 @@ export default function DashboardPage() {
     description: "",
     category: "restaurant",
     googleReviewUrl: "",
+    ownerId: "",
   });
   const [creating, setCreating] = useState(false);
   const [selectedQR, setSelectedQR] = useState<Business | null>(null);
 
-  async function fetchBusinesses() {
-    try {
-      const res = await fetch("/api/businesses");
-      const data = await res.json();
-      setBusinesses(data.businesses || []);
-    } catch (error) {
-      console.error("Failed to fetch businesses:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
+    if (status === "loading") return;
+
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+
+    // Only super admin can add businesses
+    if (session.user.role !== "super_admin") {
+      setShowModal(false);
+    }
+
     fetchBusinesses();
-  }, []);
+  }, [session, status, router]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -95,6 +100,10 @@ export default function DashboardPage() {
     link.click();
   }
 
+  const handleLogout = () => {
+    signOut({ callbackUrl: "/" });
+  };
+
   const totalScans = businesses.reduce((sum, b) => sum + b.totalScans, 0);
   const totalSubmissions = businesses.reduce((sum, b) => sum + b.totalSubmissions, 0);
   const conversionRate = totalScans > 0 ? Math.round((totalSubmissions / totalScans) * 100) : 0;
@@ -117,12 +126,23 @@ export default function DashboardPage() {
               <span className="text-gray-600">/</span>
               <span className="text-gray-400 text-sm">Dashboard</span>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="btn-primary flex items-center gap-2 text-sm py-2 px-4"
-            >
-              <Plus className="w-4 h-4" /> Add Business
-            </button>
+            <div className="flex items-center gap-4">
+              {session?.user.role === "super_admin" && (
+                <Link href="/admin" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  Admin
+                </Link>
+              )}
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <User className="w-4 h-4" />
+                {session?.user.companyName || session?.user.email}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" /> Logout
+              </button>
+            </div>
           </div>
         </header>
 

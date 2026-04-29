@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { MongoClient } from "mongodb";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -16,6 +17,7 @@ interface MongooseCache {
 declare global {
   // eslint-disable-next-line no-var
   var mongoose: MongooseCache | undefined;
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
 const cached: MongooseCache = global.mongoose ?? { conn: null, promise: null };
@@ -48,5 +50,24 @@ async function connectDB(): Promise<typeof mongoose> {
 
   return cached.conn;
 }
+
+// For NextAuth MongoDB adapter
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
+
+if (process.env.NODE_ENV === "development") {
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(MONGODB_URI);
+    global._mongoClientPromise = client.connect();
+  }
+  clientPromise = global._mongoClientPromise;
+} else {
+  client = new MongoClient(MONGODB_URI);
+  clientPromise = client.connect();
+}
+
+export { clientPromise };
+
+export default connectDB;
 
 export default connectDB;

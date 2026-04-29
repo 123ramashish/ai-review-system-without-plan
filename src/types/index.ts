@@ -6,6 +6,7 @@ export interface Business {
   googleReviewUrl: string;
   qrCode?: string;
   qrToken: string;
+  ownerId: string;
   totalScans: number;
   totalSubmissions: number;
   rating?: number;
@@ -40,14 +41,28 @@ export interface ScanEvent {
 
 export type FeedbackTone = "enthusiastic" | "professional" | "casual" | "detailed";
 
-export type StarRating = 1 | 2 | 3 | 4 | 5;
+export interface User {
+  _id: string;
+  email: string;
+  role: "super_admin" | "company_admin";
+  companyName?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-export interface GenerateFeedbackRequest {
+export interface Subscription {
+  _id: string;
+  userId: string;
   businessId: string;
-  rating: StarRating;
-  tone: FeedbackTone;
-  keywords?: string[];
-  sessionId: string;
+  month: number;
+  year: number;
+  reviewCount: number;
+  maxReviews: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 }
 
 export interface GenerateFeedbackResponse {
