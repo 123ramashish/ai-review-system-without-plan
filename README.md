@@ -15,45 +15,9 @@ ReviewGenius lets businesses place a QR code at their counter. When customers sc
 - **Editable Text** — Customers can tweak the AI text before submitting
 - **One-Tap Google Submission** — Auto-copies text and opens Google Reviews
 - **Analytics Dashboard** — Track scans, submissions, and conversion rates
-- **MongoDB Persistence** — All events tracked for business insights
 
 ---
 
-## 🗂️ Project Structure
-
-```
-src/
-├── app/
-│   ├── page.tsx                    # Landing page
-│   ├── layout.tsx                  # Root layout
-│   ├── globals.css                 # Global styles (Tailwind + custom)
-│   ├── dashboard/
-│   │   └── page.tsx               # Business management dashboard
-│   ├── review/
-│   │   └── [token]/
-│   │       └── page.tsx           # Customer-facing review page (QR scan destination)
-│   └── api/
-│       ├── businesses/
-│       │   ├── route.ts           # GET (list) / POST (create) businesses
-│       │   └── [id]/route.ts      # GET / PATCH / DELETE single business
-│       ├── generate/
-│       │   └── route.ts           # POST — AI feedback generation
-│       ├── scan/
-│       │   └── route.ts           # POST — record QR scan event
-│       └── feedback/
-│           └── route.ts           # POST (mark used) / GET (analytics)
-├── components/                    # (extend here)
-├── lib/
-│   ├── mongodb.ts                 # Mongoose connection with caching
-│   ├── ai-generator.ts           # Claude AI + fallback suggestion engine
-│   └── qr-generator.ts           # QRCode PNG/SVG generation
-├── models/
-│   ├── Business.ts                # Business schema
-│   ├── FeedbackSuggestion.ts     # AI suggestion + usage tracking
-│   └── ScanEvent.ts              # QR scan events
-└── types/
-    └── index.ts                   # Shared TypeScript types
-```
 
 ---
 
@@ -168,21 +132,7 @@ To enable AI: add `ANTHROPIC_API_KEY` to `.env.local`.
 
 ---
 
-## 🔧 API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/businesses` | List all businesses |
-| `POST` | `/api/businesses` | Create business + generate QR |
-| `GET` | `/api/businesses/:id` | Get single business |
-| `PATCH` | `/api/businesses/:id` | Update business |
-| `DELETE` | `/api/businesses/:id` | Delete business |
-| `POST` | `/api/scan` | Record QR scan, return session |
-| `POST` | `/api/generate` | Generate AI feedback suggestions |
-| `POST` | `/api/feedback` | Mark suggestion as used/submitted |
-| `GET` | `/api/feedback?businessId=` | Get feedback analytics |
-
----
 
 ## 🎨 Tech Stack
 
