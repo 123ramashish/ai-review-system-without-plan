@@ -40,7 +40,7 @@ export async function PATCH(
     }
 
     if (body.regenerateQR) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ai-review-system-without-plan.vercel.app/";
       body.qrCode = await generateQRCode(existing.qrToken, appUrl);
       delete body.regenerateQR;
     }
