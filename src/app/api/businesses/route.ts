@@ -4,6 +4,23 @@ import Business from "@/models/Business";
 import { generateQRCode } from "@/lib/qr-generator";
 import { v4 as uuidv4 } from "uuid";
 
+function resolveAppUrl(req: NextRequest): string {
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const forwardedHost = req.headers.get("x-forwarded-host");
+
+  if (forwardedHost) {
+    const protocol = forwardedProto || "https";
+    return `${protocol}://${forwardedHost}`;
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    return appUrl.replace(/\/$/, "");
+  }
+
+  return "https://ai-review-system-without-plan.vercel.app";
+}
+
 // GET /api/businesses — list all businesses
 export async function GET() {
   try {
@@ -34,8 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const qrToken = uuidv4();
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://ai-review-system-without-plan.vercel.app/";
+    const appUrl = resolveAppUrl(req);
 
     // Generate QR code image
     const qrCode = await generateQRCode(qrToken, appUrl);

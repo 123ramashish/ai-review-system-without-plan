@@ -3,6 +3,23 @@ import connectDB from "@/lib/mongodb";
 import Business from "@/models/Business";
 import { generateQRCode } from "@/lib/qr-generator";
 
+function resolveAppUrl(req: NextRequest): string {
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const forwardedHost = req.headers.get("x-forwarded-host");
+
+  if (forwardedHost) {
+    const protocol = forwardedProto || "https";
+    return `${protocol}://${forwardedHost}`;
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    return appUrl.replace(/\/$/, "");
+  }
+
+  return "https://ai-review-system-without-plan.vercel.app";
+}
+
 // GET /api/businesses/[id]
 export async function GET(
   _req: NextRequest,
@@ -40,7 +57,7 @@ export async function PATCH(
     }
 
     if (body.regenerateQR) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ai-review-system-without-plan.vercel.app/";
+      const appUrl = resolveAppUrl(req);
       body.qrCode = await generateQRCode(existing.qrToken, appUrl);
       delete body.regenerateQR;
     }
