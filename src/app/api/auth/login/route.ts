@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Business Admin login
       await connectDB();
-      const user = await User.findOne({ email });
+      const user:any = await User.findOne({ email });
       if (!user) {
         return NextResponse.json(
           { error: "Invalid credentials" },
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
-      tokenPayload = { role: "admin", businessId: user.businessId.toString() };
+      tokenPayload = { role: "admin", businessId: user?.businessId.toString() };
     }
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || "default_secret");
