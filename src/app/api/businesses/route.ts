@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("POST /api/businesses error:", error);
     return NextResponse.json(
-      { error: "Failed to create business" },
+      { error: `Failed to create business: ${error}` },
       { status: 500 }
     );
   }
