@@ -18,6 +18,20 @@ const TONES: { value: FeedbackTone; label: string; emoji: string; desc: string }
 const RATING_LABELS = ["", "Poor", "Below Average", "Okay", "Good", "Excellent!"];
 const RATING_COLORS = ["", "text-red-400", "text-orange-400", "text-yellow-400", "text-lime-400", "text-brand-400"];
 
+// Keep client-side fallback aligned with the server-side word cap.
+const MAX_REVIEW_WORDS = 40;
+
+function truncateToWords(text: string, maxWords: number): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  const words = cleaned.split(" ");
+  if (words.length <= maxWords) return cleaned;
+  let truncated = words.slice(0, maxWords).join(" ");
+  truncated = truncated.replace(/[,;:\-–—]+$/g, "").trim();
+  truncated = truncated.replace(/\s+(and|but|or|with|for|to|of|the|a|an)$/i, "").trim();
+  if (!/[.!?]$/.test(truncated)) truncated += ".";
+  return truncated;
+}
+
 type Step = "select" | "suggestions";
 
 interface BusinessInfo {
@@ -207,7 +221,7 @@ function buildClientReview(
 
   const usedPart = pick(parts, rand);
 
-  return `${opener} — ${mid}. ${usedPart}. ${closer}`;
+  return truncateToWords(`${opener} — ${mid}. ${usedPart}. ${closer}`, MAX_REVIEW_WORDS);
 }
 
 export default function ReviewPage() {
@@ -227,6 +241,8 @@ export default function ReviewPage() {
   const [initialLoading,  setInitialLoading]  = useState(true);
   const [copied,          setCopied]          = useState(false);
   const [redirecting,     setRedirecting]     = useState(false);
+  const [copySuccess,     setCopySuccess]     = useState(false);
+  const [autoFilled,      setAutoFilled]      = useState(false);
   const [error,           setError]           = useState<string>("");
 
   // ── Per-minute time seed ──────────────────────────────────────────────────
@@ -366,8 +382,34 @@ export default function ReviewPage() {
       }).catch(() => {});
     }
 
-    await navigator.clipboard.writeText(editedText).catch(() => {});
-    setTimeout(() => { window.location.href = business.googleReviewUrl; }, 800);
+    // Always copy to clipboard as backup
+    const didCopy = await navigator.clipboard.writeText(editedText).then(() => true).catch(() => false);
+    setCopySuccess(didCopy);
+
+    // Try the local Selenium automation server first (http://localhost:5175)
+    // If it's running, it opens Chrome with the user's Google session and auto-fills.
+    try {
+      const res = await fetch("http://localhost:5175/fill-review", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          url:        business.googleReviewUrl,
+          text:       editedText,
+          stars:      rating,
+          autoSubmit: false,
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAutoFilled(true);
+        return; // Selenium handled it — don't redirect the current tab
+      }
+    } catch {
+      // Local server not running — fall back to clipboard + redirect
+    }
+
+    setTimeout(() => { window.location.href = business.googleReviewUrl; }, 2500);
   }
 
   // ── Loading screen ────────────────────────────────────────────────────────
@@ -397,26 +439,120 @@ export default function ReviewPage() {
 
   // ── Redirecting overlay ───────────────────────────────────────────────────
   if (redirecting) {
+    // ── Auto-filled by Selenium server ──────────────────────────────────────
+    if (autoFilled) {
+      return (
+        <div className="min-h-screen bg-surface flex items-center justify-center px-6">
+          <div className="text-center space-y-5 animate-fade-up max-w-sm w-full">
+            <div className="w-20 h-20 bg-brand-500/15 rounded-full flex items-center justify-center mx-auto">
+              <Check className="w-10 h-10 text-brand-400" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold text-white mb-2">Review auto-filled! 🎉</h2>
+              <p className="text-gray-400 text-sm">
+                Your review text and {rating} star{rating !== 1 ? "s" : ""} have been filled in
+                automatically. Just click <strong className="text-white">Post</strong> in Chrome to submit.
+              </p>
+            </div>
+            <div className="flex justify-center gap-1">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star key={s} className={`w-7 h-7 ${s <= rating ? "text-gold fill-gold" : "text-gray-700"}`} />
+              ))}
+            </div>
+            <div className="glass rounded-xl p-4 border border-brand-500/30 text-left">
+              <p className="text-gray-400 text-xs mb-1">Filled review:</p>
+              <p className="text-gray-300 text-xs leading-relaxed italic">"{editedText}"</p>
+            </div>
+            <button
+              onClick={() => { setRedirecting(false); setAutoFilled(false); }}
+              className="btn-secondary w-full text-sm"
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center px-6">
-        <div className="text-center space-y-6 animate-fade-up max-w-sm w-full">
-          <div className="w-20 h-20 bg-brand-500/15 rounded-full flex items-center justify-center mx-auto">
-            <Check className="w-10 h-10 text-brand-400" />
+      <div className="min-h-screen bg-surface flex items-center justify-center px-6 py-8">
+        <div className="space-y-4 animate-fade-up max-w-sm w-full">
+
+          <div className="text-center">
+            <div className="w-16 h-16 bg-brand-500/15 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Check className="w-8 h-8 text-brand-400" />
+            </div>
+            <h2 className="font-display text-xl font-bold text-white">Opening Google Reviews</h2>
+            <p className="text-gray-400 text-sm mt-1">Follow these steps when Google opens:</p>
           </div>
-          <div>
-            <h2 className="font-display text-2xl font-bold text-white mb-2">Review copied! 🎉</h2>
-            <p className="text-gray-400 text-sm">
-              Taking you to Google now — just paste your review and hit submit!
-            </p>
+
+          {/* Step-by-step guide */}
+          <div className="glass rounded-xl p-4 space-y-3.5">
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-brand-500/20 border border-brand-500/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-brand-300 text-xs font-bold">1</span>
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold">Tap {rating} star{rating !== 1 ? "s" : ""}</p>
+                <div className="flex gap-0.5 mt-1.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className={`w-6 h-6 ${s <= rating ? "text-gold fill-gold" : "text-gray-600"}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-brand-500/20 border border-brand-500/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-brand-300 text-xs font-bold">2</span>
+              </div>
+              <p className="text-white text-sm font-semibold mt-0.5">Tap the review text box</p>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-brand-500/20 border border-brand-500/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-brand-300 text-xs font-bold">3</span>
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold">Paste your review</p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  Mobile: long-press → <span className="text-gray-300 font-medium">Paste</span>
+                  {"  ·  "}
+                  Desktop: <span className="text-gray-300 font-mono font-medium">Ctrl+V</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-brand-500/20 border border-brand-500/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-brand-300 text-xs font-bold">4</span>
+              </div>
+              <p className="text-white text-sm font-semibold mt-0.5">
+                Tap <span className="text-brand-400">Post</span> to submit
+              </p>
+            </div>
           </div>
-          <div className="glass rounded-xl p-4 text-left border border-brand-500/30">
-            <p className="text-gray-300 text-xs leading-relaxed italic">"{editedText}"</p>
+
+          {/* Copied text preview */}
+          <div className={`glass rounded-xl p-4 border ${copySuccess ? "border-brand-500/30" : "border-yellow-500/30"}`}>
+            {copySuccess ? (
+              <div className="flex items-center gap-1.5 mb-2">
+                <Check className="w-3.5 h-3.5 text-brand-400" />
+                <span className="text-brand-400 text-xs font-semibold">Copied to clipboard</span>
+              </div>
+            ) : (
+              <p className="text-yellow-400 text-xs font-semibold mb-2">
+                ⚠️ Clipboard blocked — select and copy the text below:
+              </p>
+            )}
+            <p className="text-gray-300 text-xs leading-relaxed italic select-all">"{editedText}"</p>
           </div>
+
           <div className="flex items-center justify-center gap-2 text-gray-500 text-xs">
             <div className="w-3 h-3 border border-brand-500 border-t-transparent rounded-full animate-spin" />
             Opening Google Reviews…
           </div>
-          <a href={business?.googleReviewUrl} className="text-brand-400 text-xs underline underline-offset-2">
+          <a href={business?.googleReviewUrl} className="block text-center text-brand-400 text-xs underline underline-offset-2">
             Tap here if it doesn't open automatically
           </a>
         </div>

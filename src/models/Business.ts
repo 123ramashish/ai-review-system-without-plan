@@ -10,6 +10,10 @@ export interface IBusiness extends Document {
   totalScans: number;
   totalSubmissions: number;
   rating?: number;
+  subscriptionStatus: "active" | "past_due" | "canceled";
+  subscriptionAmount: number;
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +75,22 @@ const BusinessSchema = new Schema<IBusiness>(
       type: Number,
       min: 1,
       max: 5,
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ["active", "past_due", "canceled"],
+      default: "active",
+    },
+    subscriptionAmount: {
+      type: Number,
+      default: 1000,
+    },
+    subscriptionStartDate: {
+      type: Date,
+      default: Date.now,
+    },
+    subscriptionEndDate: {
+      type: Date,
     },
   },
   {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Business from "@/models/Business";
+import User from "@/models/User";
 import { generateQRCode } from "@/lib/qr-generator";
 
 function resolveAppUrl(req: NextRequest): string {
@@ -86,6 +87,7 @@ export async function DELETE(
   try {
     await connectDB();
     await Business.findByIdAndDelete(params.id);
+    await User.deleteMany({ businessId: params.id });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/businesses/[id] error:", error);
@@ -95,3 +97,4 @@ export async function DELETE(
     );
   }
 }
+

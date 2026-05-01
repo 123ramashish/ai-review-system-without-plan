@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Business from "@/models/Business";
+import User from "@/models/User";
 import { generateQRCode } from "@/lib/qr-generator";
 import { v4 as uuidv4 } from "uuid";
+import bcrypt from "bcryptjs";
 
 function resolveAppUrl(req: NextRequest): string {
   const forwardedProto = req.headers.get("x-forwarded-proto");
@@ -41,13 +43,19 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const { name, description, category, googleReviewUrl } = body;
+    const { name, description, category, googleReviewUrl, adminEmail, adminPassword } = body;
 
-    if (!name || !description || !category || !googleReviewUrl) {
+    if (!name || !description || !category || !googleReviewUrl || !adminEmail || !adminPassword) {
       return NextResponse.json(
-        { error: "All fields are required" },
+        { error: "All fields including Admin Email and Password are required" },
         { status: 400 }
       );
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: adminEmail });
+    if (existingUser) {
+      return NextResponse.json({ error: "Admin email already in use" }, { status: 400 });
     }
 
     const qrToken = uuidv4();
@@ -63,6 +71,15 @@ export async function POST(req: NextRequest) {
       googleReviewUrl,
       qrToken,
       qrCode,
+    });
+
+    // Create Admin User
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
+    await User.create({
+      email: adminEmail,
+      passwordHash,
+      role: "admin",
+      businessId: business._id,
     });
 
     return NextResponse.json({ business }, { status: 201 });
