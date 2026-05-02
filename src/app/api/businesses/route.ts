@@ -3,6 +3,7 @@ import connectDB from "@/lib/mongodb";
 import Business from "@/models/Business";
 import User from "@/models/User";
 import { generateQRCode } from "@/lib/qr-generator";
+import { requireSuperAdmin } from "@/lib/verify-admin";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 
@@ -23,9 +24,13 @@ function resolveAppUrl(req: NextRequest): string {
   return "https://ai-review-system-without-plan.vercel.app";
 }
 
-// GET /api/businesses — list all businesses
-export async function GET() {
+// GET /api/businesses — list all businesses (super admin only; middleware also enforces)
+export async function GET(req: NextRequest) {
   try {
+    const admin = await requireSuperAdmin(req);
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     await connectDB();
     const businesses = await Business.find({}).sort({ createdAt: -1 }).lean();
     return NextResponse.json({ businesses });

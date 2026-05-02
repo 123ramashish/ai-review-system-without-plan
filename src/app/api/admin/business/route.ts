@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
 import connectDB from "@/lib/mongodb";
 import Business from "@/models/Business";
+import { verifyAdminToken } from "@/lib/verify-admin";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get("admin_token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || "default_secret");
-    const { payload } = await jwtVerify(token, secret);
-
+    const payload = await verifyAdminToken(req);
+    if (!payload) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     if (payload.role !== "admin" || !payload.businessId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

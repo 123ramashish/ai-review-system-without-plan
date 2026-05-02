@@ -65,30 +65,28 @@ export default function AdminDashboardPage() {
 
       <div className="relative z-10">
         {/* Header */}
-        <header className="border-b border-surface-border px-6 py-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
+        <header className="border-b border-surface-border px-4 sm:px-6 py-4 safe-area-pt">
+          <div className="max-w-6xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+              <Link href="/" className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Star className="w-3.5 h-3.5 text-white fill-white" />
                 </div>
-                <span className="font-display font-bold text-white">ReviewGenius</span>
+                <span className="font-display font-bold text-white truncate">ReviewGenius</span>
               </Link>
-              <span className="text-gray-600">/</span>
-              <span className="text-gray-400 text-sm">Business Portal</span>
+              <span className="text-gray-600 hidden sm:inline">/</span>
+              <span className="text-gray-400 text-sm w-full sm:w-auto">Business Portal</span>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleLogout}
-                className="btn-secondary flex items-center gap-2 text-sm py-2 px-4"
-              >
-                <LogOut className="w-4 h-4" /> Log Out
-              </button>
-            </div>
+            <button
+              onClick={handleLogout}
+              className="btn-secondary flex items-center justify-center gap-2 text-sm py-2.5 px-4 w-full sm:w-auto"
+            >
+              <LogOut className="w-4 h-4" /> Log Out
+            </button>
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-6 py-8">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 safe-area-pb">
           {loading ? (
             <div className="space-y-4">
               <div className="glass rounded-2xl h-64 shimmer" />
@@ -125,8 +123,8 @@ export default function AdminDashboardPage() {
               <div className="glass rounded-2xl p-8 hover:border-brand-500/30 transition-all duration-200">
                 <div className="flex flex-col md:flex-row items-start justify-between gap-8">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-display text-3xl font-bold text-white">{business.name}</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                      <h3 className="font-display text-2xl sm:text-3xl font-bold text-white break-words">{business.name}</h3>
                       <span className="bg-brand-500/10 text-brand-300 text-xs px-3 py-1 rounded-full capitalize flex-shrink-0 font-medium">
                         {business.category}
                       </span>
@@ -140,17 +138,17 @@ export default function AdminDashboardPage() {
                       </span>
                     </div>
                     
-                    <div className="mt-8 flex items-center gap-4">
+                    <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Link
                         href={`/review/${business.qrToken}`}
                         target="_blank"
-                        className="btn-secondary flex items-center gap-2"
+                        className="btn-secondary flex items-center justify-center gap-2 text-center"
                       >
                         <ExternalLink className="w-4 h-4" /> Preview Live Page
                       </Link>
                       <button
                         onClick={() => setSelectedQR(business)}
-                        className="btn-primary flex items-center gap-2"
+                        className="btn-primary flex items-center justify-center gap-2"
                       >
                         <QrCode className="w-4 h-4" /> Show QR Code
                       </button>
@@ -184,9 +182,9 @@ export default function AdminDashboardPage() {
 
       {/* QR Code Modal */}
       {selectedQR && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedQR(null)} />
-          <div className="relative glass rounded-2xl p-8 w-full max-w-sm text-center animate-fade-up">
+          <div className="relative glass rounded-t-2xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-sm text-center animate-fade-up max-h-[90dvh] overflow-y-auto border-t sm:border border-surface-border">
             <h2 className="font-display text-xl font-bold text-white mb-2">{selectedQR.name}</h2>
             <p className="text-gray-400 text-sm mb-6">Scan to leave a review</p>
             {selectedQR.qrCode ? (

@@ -42,10 +42,25 @@ export type FeedbackTone = "enthusiastic" | "professional" | "casual" | "detaile
 
 export type StarRating = 1 | 2 | 3 | 4 | 5;
 
+/** Language for generated review text (offline + AI prompts). */
+export type ReviewLanguage = "english" | "hindi" | "hinglish";
+
+export const REVIEW_LANGUAGE_OPTIONS: {
+  value: ReviewLanguage;
+  label: string;
+  hint: string;
+}[] = [
+  { value: "english", label: "English", hint: "English only" },
+  { value: "hindi", label: "हिंदी", hint: "Devanagari Hindi" },
+  { value: "hinglish", label: "Hinglish", hint: "Hindi + English mix" },
+];
+
 export interface GenerateFeedbackRequest {
   businessId: string;
   rating: StarRating;
   tone: FeedbackTone;
+  /** Defaults to hinglish when omitted */
+  reviewLanguage?: ReviewLanguage;
   keywords?: string[];
   sessionId: string;
 }

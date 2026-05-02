@@ -4,13 +4,23 @@ import Business from "@/models/Business";
 import FeedbackSuggestion from "@/models/FeedbackSuggestion";
 import { generateFeedbackSuggestions } from "@/lib/ai-generator";
 import { GenerateFeedbackRequest } from "@/types";
+import { normalizeReviewLanguage } from "@/lib/review-bounds";
 
 // POST /api/generate — time-seeded feedback generation (free, no API key needed)
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body: GenerateFeedbackRequest & { minuteTimestamp?: number } = await req.json();
-    const { businessId, rating, tone, keywords = [], sessionId, minuteTimestamp } = body;
+    const {
+      businessId,
+      rating,
+      tone,
+      keywords = [],
+      sessionId,
+      minuteTimestamp,
+      reviewLanguage: rawLang,
+    } = body;
+    const reviewLanguage = normalizeReviewLanguage(rawLang);
 
     if (!businessId || !rating || !tone || !sessionId) {
       return NextResponse.json(
@@ -35,7 +45,8 @@ export async function POST(req: NextRequest) {
       tone,
       keywords,
       3,
-      minuteTimestamp  // client sends Math.floor(Date.now() / 60000)
+      minuteTimestamp,
+      reviewLanguage
     );
 
     // Persist for analytics
@@ -46,6 +57,7 @@ export async function POST(req: NextRequest) {
         suggestedText: s.text,
         rating,
         tone,
+        reviewLanguage,
         keywords,
         wasUsed: false,
         wasEdited: false,

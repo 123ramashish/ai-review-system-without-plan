@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
-import { FeedbackTone } from "@/types";
+import { FeedbackTone, ReviewLanguage } from "@/types";
 
 export interface IFeedbackSuggestion extends Document {
   businessId: mongoose.Types.ObjectId;
@@ -7,6 +7,7 @@ export interface IFeedbackSuggestion extends Document {
   suggestedText: string;
   rating: number;
   tone: FeedbackTone;
+  reviewLanguage?: ReviewLanguage;
   keywords: string[];
   wasUsed: boolean;
   wasEdited: boolean;
@@ -43,6 +44,10 @@ const FeedbackSuggestionSchema = new Schema<IFeedbackSuggestion>(
       type: String,
       enum: ["enthusiastic", "professional", "casual", "detailed"],
       required: true,
+    },
+    reviewLanguage: {
+      type: String,
+      enum: ["english", "hindi", "hinglish"],
     },
     keywords: [
       {

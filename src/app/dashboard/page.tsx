@@ -75,6 +75,7 @@ const EMPTY_FORM = {
 export default function DashboardPage() {
   const [businesses,      setBusinesses]      = useState<Business[]>([]);
   const [loading,         setLoading]         = useState(true);
+  const [loadError,       setLoadError]       = useState<string | null>(null);
   const [activeTab,       setActiveTab]       = useState<FilterTab>("all");
   const [showModal,       setShowModal]       = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
@@ -92,12 +93,20 @@ export default function DashboardPage() {
   }
 
   async function fetchBusinesses() {
+    setLoadError(null);
     try {
       const res  = await fetch("/api/businesses");
       const data = await res.json();
+      if (!res.ok) {
+        setLoadError(data.error || "Could not load businesses.");
+        setBusinesses([]);
+        return;
+      }
       setBusinesses(data.businesses || []);
     } catch (err) {
       console.error("Failed to fetch businesses:", err);
+      setLoadError("Network error. Check your connection and try again.");
+      setBusinesses([]);
     } finally {
       setLoading(false);
     }
@@ -221,28 +230,28 @@ export default function DashboardPage() {
 
       <div className="relative z-10">
         {/* Header */}
-        <header className="border-b border-surface-border px-6 py-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
+        <header className="border-b border-surface-border px-4 sm:px-6 py-4 safe-area-pt">
+          <div className="max-w-7xl mx-auto flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+              <Link href="/" className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Star className="w-3.5 h-3.5 text-white fill-white" />
                 </div>
-                <span className="font-display font-bold text-white">ReviewGenius</span>
+                <span className="font-display font-bold text-white truncate">ReviewGenius</span>
               </Link>
-              <span className="text-gray-600">/</span>
-              <span className="text-gray-400 text-sm">Super Admin</span>
+              <span className="text-gray-600 hidden sm:inline">/</span>
+              <span className="text-gray-400 text-sm w-full sm:w-auto">Super Admin</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <button
                 onClick={() => { setShowModal(true); setFormData({ ...EMPTY_FORM }); }}
-                className="btn-primary flex items-center gap-2 text-sm py-2 px-4"
+                className="btn-primary flex items-center justify-center gap-2 text-sm py-2.5 px-4"
               >
                 <Plus className="w-4 h-4" /> Add Business
               </button>
               <button
                 onClick={handleLogout}
-                className="btn-secondary flex items-center gap-2 text-sm py-2 px-4"
+                className="btn-secondary flex items-center justify-center gap-2 text-sm py-2.5 px-4"
               >
                 <LogOut className="w-4 h-4" /> Log Out
               </button>
@@ -250,7 +259,20 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 pb-24 safe-area-pb">
+
+          {loadError && (
+            <div className="glass rounded-xl p-4 border border-red-500/30 bg-red-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-red-300 text-sm">{loadError}</p>
+              <button
+                type="button"
+                onClick={() => { setLoading(true); fetchBusinesses(); }}
+                className="btn-secondary text-sm py-2 px-4 flex-shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {/* ── Subscription overview ─────────────────────────────────── */}
           <section>
@@ -258,7 +280,7 @@ export default function DashboardPage() {
               <CreditCard className="w-4 h-4 text-brand-400" />
               Subscription Overview
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {[
                 {
                   label: "Total Businesses", value: businesses.length,
@@ -303,7 +325,7 @@ export default function DashboardPage() {
           </section>
 
           {/* ── Engagement row ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Total QR Scans",  value: stats.totalScans,   icon: QrCode,   color: "brand" },
               { label: "Reviews Collected", value: stats.totalReviews, icon: TrendingUp, color: "gold" },
@@ -348,12 +370,12 @@ export default function DashboardPage() {
           {/* ── Filter tabs + list ───────────────────────────────────── */}
           <section>
             {/* Tabs */}
-            <div className="flex items-center gap-0.5 border-b border-surface-border mb-5">
+            <div className="flex items-center gap-0.5 border-b border-surface-border mb-5 overflow-x-auto pb-px -mx-1 px-1">
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-4 py-2.5 text-sm font-medium transition-all flex items-center gap-2 -mb-px border-b-2 rounded-t-lg ${
+                  className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition-all flex items-center gap-2 -mb-px border-b-2 rounded-t-lg flex-shrink-0 whitespace-nowrap ${
                     activeTab === tab.key
                       ? `border-brand-500 ${tab.activeColor} bg-brand-500/5`
                       : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/5"
@@ -416,8 +438,8 @@ export default function DashboardPage() {
                         "hover:border-brand-500/30"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <div className="flex-1 min-w-0 order-2 lg:order-1">
 
                           {/* Name + status badges */}
                           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -490,7 +512,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0 order-1 lg:order-2 lg:justify-end">
                           <Link
                             href={`/review/${b.qrToken}`}
                             target="_blank"
@@ -531,12 +553,12 @@ export default function DashboardPage() {
 
       {/* ── Add / Edit Business Modal ────────────────────────────────────── */}
       {(showModal || editingBusiness) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => { setShowModal(false); setEditingBusiness(null); }}
           />
-          <div className="relative glass rounded-2xl p-8 w-full max-w-md animate-fade-up max-h-[90vh] overflow-y-auto">
+          <div className="relative glass rounded-t-2xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-md animate-fade-up max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto border-t sm:border border-surface-border sm:border-transparent">
             <h2 className="font-display text-xl font-bold text-white mb-6">
               {editingBusiness ? "Edit Business" : "Add New Business"}
             </h2>
@@ -558,7 +580,7 @@ export default function DashboardPage() {
               <div>
                 <label className="text-gray-400 text-sm mb-1.5 block">Description</label>
                 <textarea
-                  required rows={3}
+                  required rows={6} maxLength={10000}
                   value={formData.description}
                   onChange={(e) => set({ description: e.target.value })}
                   placeholder="A cozy neighbourhood café known for specialty coffee..."
@@ -681,9 +703,9 @@ export default function DashboardPage() {
 
       {/* ── QR Code Modal ────────────────────────────────────────────────── */}
       {selectedQR && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedQR(null)} />
-          <div className="relative glass rounded-2xl p-8 w-full max-w-sm text-center animate-fade-up">
+          <div className="relative glass rounded-t-2xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-sm text-center animate-fade-up max-h-[90dvh] overflow-y-auto border-t sm:border border-surface-border">
             <h2 className="font-display text-xl font-bold text-white mb-2">{selectedQR.name}</h2>
             <p className="text-gray-400 text-sm mb-6">Scan to leave a review</p>
             {selectedQR.qrCode ? (

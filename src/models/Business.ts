@@ -30,7 +30,7 @@ const BusinessSchema = new Schema<IBusiness>(
       type: String,
       required: [true, "Business description is required"],
       trim: true,
-      maxlength: [500, "Description cannot exceed 500 characters"],
+      maxlength: [10000, "Description cannot exceed 10000 characters"],
     },
     category: {
       type: String,
@@ -61,7 +61,6 @@ const BusinessSchema = new Schema<IBusiness>(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     totalScans: {
       type: Number,
@@ -98,8 +97,7 @@ const BusinessSchema = new Schema<IBusiness>(
   }
 );
 
-// Indexes
-BusinessSchema.index({ qrToken: 1 });
+// Indexes (qrToken indexed via unique)
 BusinessSchema.index({ createdAt: -1 });
 
 const Business: Model<IBusiness> =

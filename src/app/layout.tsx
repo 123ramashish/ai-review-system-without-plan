@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   description:
     "Scan a QR code and get AI-generated unique review text to submit on Google Business. Boost your business reputation effortlessly.",
   keywords: ["google review", "business review", "QR code", "AI review generator"],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0f0f1a",
 };
 
 export default function RootLayout({
@@ -19,7 +26,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
       </head>
-      <body className="antialiased bg-surface text-white min-h-screen">
+      <body className="antialiased bg-surface text-white min-h-screen overflow-x-hidden">
         {children}
       </body>
     </html>

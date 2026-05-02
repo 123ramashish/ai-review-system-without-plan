@@ -4,9 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import {
   Star, Copy, Check, ExternalLink, Sparkles,
-  RefreshCw, ChevronRight, ArrowLeft, MapPin, Clock,
+  RefreshCw, ChevronRight, ArrowLeft, MapPin, Clock, Languages,
 } from "lucide-react";
-import { FeedbackTone, StarRating, GeneratedSuggestion } from "@/types";
+import {
+  FeedbackTone,
+  StarRating,
+  GeneratedSuggestion,
+  ReviewLanguage,
+  REVIEW_LANGUAGE_OPTIONS,
+} from "@/types";
+import { buildClientPreviewReview } from "@/lib/ai-generator";
 
 const TONES: { value: FeedbackTone; label: string; emoji: string; desc: string }[] = [
   { value: "enthusiastic", label: "Enthusiastic", emoji: "🎉", desc: "Excited & glowing" },
@@ -18,20 +25,6 @@ const TONES: { value: FeedbackTone; label: string; emoji: string; desc: string }
 const RATING_LABELS = ["", "Poor", "Below Average", "Okay", "Good", "Excellent!"];
 const RATING_COLORS = ["", "text-red-400", "text-orange-400", "text-yellow-400", "text-lime-400", "text-brand-400"];
 
-// Keep client-side fallback aligned with the server-side word cap.
-const MAX_REVIEW_WORDS = 40;
-
-function truncateToWords(text: string, maxWords: number): string {
-  const cleaned = text.replace(/\s+/g, " ").trim();
-  const words = cleaned.split(" ");
-  if (words.length <= maxWords) return cleaned;
-  let truncated = words.slice(0, maxWords).join(" ");
-  truncated = truncated.replace(/[,;:\-–—]+$/g, "").trim();
-  truncated = truncated.replace(/\s+(and|but|or|with|for|to|of|the|a|an)$/i, "").trim();
-  if (!/[.!?]$/.test(truncated)) truncated += ".";
-  return truncated;
-}
-
 type Step = "select" | "suggestions";
 
 interface BusinessInfo {
@@ -40,188 +33,6 @@ interface BusinessInfo {
   category: string;
   description: string;
   googleReviewUrl: string;
-}
-
-// ── Seeded PRNG — same as server, used for instant client-side fallback ───────
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function buildClientSeed(key: string, rating: StarRating, tone: FeedbackTone, minute: number) {
-  const str = `${key}|${rating}|${tone}|${minute}`;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = Math.imul(31, hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-function pick<T>(arr: T[], rand: () => number): T {
-  return arr[Math.floor(rand() * arr.length)];
-}
-
-// Client-side phrase banks (mirror of server) — used as instant fallback
-const CAT_THINGS: Record<string, string[]> = {
-  restaurant: ["the food", "the dishes", "the menu", "the cuisine", "the flavours", "the presentation"],
-  cafe:       ["the coffee", "the pastries", "the brunch", "the cakes", "the drinks", "the flat white"],
-  salon:      ["the treatment", "the styling", "the results", "the colour work", "the cut"],
-  gym:        ["the equipment", "the classes", "the facilities", "the training programmes", "the weights area"],
-  hotel:      ["the room", "the breakfast", "the amenities", "the service", "the restaurant"],
-  retail:     ["the selection", "the range", "the products", "the quality", "the prices"],
-  medical:    ["the consultation", "the treatment", "the care", "the advice", "the follow-up"],
-  automotive: ["the work", "the repairs", "the service", "the diagnostics", "the MOT"],
-  services:   ["the work", "the results", "the deliverables", "the service", "the project"],
-  other:      ["the service", "the experience", "the quality", "the overall offering"],
-};
-
-const CAT_STAFF: Record<string, string[]> = {
-  restaurant: ["the chef", "our server", "the team", "the host", "the kitchen crew"],
-  cafe:       ["the barista", "the team", "the staff", "the owner"],
-  salon:      ["my stylist", "the colourist", "the team", "the technician"],
-  gym:        ["the trainer", "the instructors", "my PT", "the floor staff"],
-  hotel:      ["the front desk team", "the concierge", "the staff", "the housekeeping team"],
-  retail:     ["the assistant", "the team", "the sales staff", "the floor team"],
-  medical:    ["the doctor", "the nurse", "the specialist", "the practitioner"],
-  automotive: ["the mechanic", "the technician", "the team", "the service advisor"],
-  services:   ["the team", "the consultant", "the specialist", "the account manager"],
-  other:      ["the team", "the staff", "the people there"],
-};
-
-const OPENERS_5 = [
-  "Genuinely one of the best experiences I've had",
-  "Completely blown away by this place",
-  "An outstanding visit from start to finish",
-  "Rarely do I leave somewhere feeling this positive",
-  "This place is truly something special",
-  "Exceeded every expectation I had coming in",
-  "I came with high hopes and left with them surpassed",
-];
-const OPENERS_4 = [
-  "Really enjoyed my visit here",
-  "A very solid experience overall",
-  "Left feeling genuinely satisfied",
-  "Very nearly perfect — close to five stars",
-  "Came away happy and would return",
-  "A great visit with only the smallest of caveats",
-];
-const OPENERS_3 = [
-  "A mixed bag, if I'm being honest",
-  "Had an okay experience — nothing more",
-  "Neither blown away nor particularly disappointed",
-  "Some genuinely good moments, some less so",
-  "There's real potential here but it wasn't quite there",
-];
-const OPENERS_2 = [
-  "Disappointed, if I'm being honest",
-  "Not the experience I was hoping for",
-  "Quite a few things fell short on this visit",
-  "Had been looking forward to this but came away underwhelmed",
-];
-const OPENERS_1 = [
-  "Really not a good experience at all, unfortunately",
-  "A deeply disappointing experience from start to finish",
-  "I rarely leave a one-star review but this warranted one",
-  "Left feeling genuinely frustrated",
-];
-
-const CLOSERS_5: Record<FeedbackTone, string[]> = {
-  enthusiastic: [
-    "I'll absolutely be back and am already recommending this place to everyone I know!",
-    "Cannot wait to return — this is firmly my new go-to spot!",
-    "Would give ten stars if I could — an absolute gem!",
-  ],
-  professional: [
-    "I would recommend this establishment to colleagues without any reservation.",
-    "A benchmark in its category — I will return and refer others with confidence.",
-    "This is the standard that others in this sector should be actively aspiring to.",
-  ],
-  casual: [
-    "Will definitely be back — honestly love this place!",
-    "Telling all my friends about it — would absolutely recommend!",
-    "Already looking forward to my next visit.",
-  ],
-  detailed: [
-    "In summary: an exceptional experience across all assessed dimensions. Unreservedly recommended.",
-    "Based on this visit alone, I would return and recommend with complete confidence.",
-  ],
-};
-
-const CLOSERS_4: Record<FeedbackTone, string[]> = {
-  enthusiastic: ["Would absolutely go back — really enjoyed it overall!", "A great spot — highly recommend with only the tiniest of caveats!"],
-  professional: ["I would recommend this business and intend to return.", "Overall a strong experience I would endorse to others."],
-  casual:       ["Would happily go back and recommend it to friends.", "Thumbs up from me — would return without question."],
-  detailed:     ["Overall a strong visit with only marginal areas for improvement. Would return."],
-};
-
-const CLOSERS_3: Record<FeedbackTone, string[]> = {
-  enthusiastic: ["Might give it another shot — I think it could be great with a few tweaks!", "There's definitely potential — rooting for them to improve!"],
-  professional: ["I would consider returning once the noted areas for improvement have been addressed."],
-  casual:       ["Might go back if they sort a few things out.", "Not sure I'd rush back but wouldn't rule it out."],
-  detailed:     ["A return visit would be considered if the noted inconsistencies were resolved."],
-};
-
-const CLOSERS_2: Record<FeedbackTone, string[]> = {
-  enthusiastic: ["Really hoping they sort things out — the potential is there!", "Would need to see real improvement before going back."],
-  professional: ["I would not recommend in the current state but would reconsider following demonstrated improvement."],
-  casual:       ["Not somewhere I'd rush back to without hearing things have improved."],
-  detailed:     ["A return visit would only be considered following demonstrated improvement across key failure areas."],
-};
-
-const CLOSERS_1: Record<FeedbackTone, string[]> = {
-  enthusiastic: ["Really hope management sees this and takes action — urgent changes are needed!"],
-  professional: ["I cannot recommend this business and urge management to undertake a comprehensive review."],
-  casual:       ["Would save others the hassle and avoid until major improvements are made."],
-  detailed:     ["Until fundamental improvements across service, quality, and staff management are demonstrated, this business cannot be recommended."],
-};
-
-function buildClientReview(
-  business: BusinessInfo,
-  rating: StarRating,
-  tone: FeedbackTone,
-  seed: number,
-  variant: number
-): string {
-  const rand = mulberry32(seed + variant * 999983 + variant * variant * 7);
-  const cat = business.category in CAT_THINGS ? business.category : "other";
-
-  const thing  = pick(CAT_THINGS[cat],  rand);
-  const staff  = pick(CAT_STAFF[cat],   rand);
-
-  const openerMap: Record<StarRating, string[]> = {
-    5: OPENERS_5, 4: OPENERS_4, 3: OPENERS_3, 2: OPENERS_2, 1: OPENERS_1,
-  };
-  const closerMap: Record<StarRating, Record<FeedbackTone, string[]>> = {
-    5: CLOSERS_5, 4: CLOSERS_4, 3: CLOSERS_3, 2: CLOSERS_2, 1: CLOSERS_1,
-  };
-
-  const opener = pick(openerMap[rating], rand);
-  const closer = pick(closerMap[rating][tone], rand);
-
-  const sentimentMid: Record<StarRating, string[]> = {
-    5: ["everything was absolutely spot on", "every detail had clearly been thought through", "I couldn't fault a single thing"],
-    4: ["the vast majority of the experience was genuinely great", "almost everything was really impressive", "things were strong across the board"],
-    3: ["some moments stood out positively while others fell flat", "the experience was inconsistent throughout", "there were good bits but also things that could be better"],
-    2: ["several things fell notably short of expectations", "there were real issues that affected the visit", "the experience was below what I'd hoped for"],
-    1: ["nothing seemed to work as it should", "issues appeared at every stage without resolution", "it was a genuinely difficult experience throughout"],
-  };
-
-  const mid = pick(sentimentMid[rating], rand);
-
-  const parts = [
-    `${thing} ${rating >= 4 ? "was impressive" : rating === 3 ? "was okay but inconsistent" : "was below standard"}`,
-    `${staff} ${rating >= 4 ? "were attentive and helpful" : rating === 3 ? "were variable in their approach" : "didn't handle things well"}`,
-  ];
-
-  const usedPart = pick(parts, rand);
-
-  return truncateToWords(`${opener} — ${mid}. ${usedPart}. ${closer}`, MAX_REVIEW_WORDS);
 }
 
 export default function ReviewPage() {
@@ -234,6 +45,7 @@ export default function ReviewPage() {
   const [rating,          setRating]          = useState<StarRating>(5);
   const [hoveredRating,   setHoveredRating]   = useState<number>(0);
   const [tone,            setTone]            = useState<FeedbackTone>("enthusiastic");
+  const [reviewLanguage,  setReviewLanguage]  = useState<ReviewLanguage>("hinglish");
   const [suggestions,     setSuggestions]     = useState<(GeneratedSuggestion & { dbId?: string })[]>([]);
   const [selectedIdx,     setSelectedIdx]     = useState<number>(0);
   const [editedText,      setEditedText]      = useState<string>("");
@@ -311,50 +123,60 @@ export default function ReviewPage() {
   }, [token]);
 
   // ── Generate / regenerate suggestions ────────────────────────────────────
-  const generateSuggestions = useCallback(async () => {
-    if (!business) return;
-    setLoading(true);
+  const generateSuggestions = useCallback(
+    async (forcedLanguage?: ReviewLanguage) => {
+      if (!business) return;
+      const language = forcedLanguage ?? reviewLanguage;
+      setLoading(true);
 
-    // Instant client-side preview while API call is in flight
-    const seed     = buildClientSeed(business.name + business.description, rating, tone, minuteTimestamp);
-    const preview  = Array.from({ length: 3 }, (_, i) => ({
-      id:       String(i),
-      text:     buildClientReview(business, rating, tone, seed, i),
-      tone,
-      rating,
-      keywords: [] as string[],
-    }));
-    setSuggestions(preview);
-    setSelectedIdx(0);
-    setEditedText(preview[0].text);
-
-    try {
-      const res  = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId:      business._id === "demo" ? "000000000000000000000000" : business._id,
+      const preview = Array.from({ length: 3 }, (_, i) => ({
+        id: String(i),
+        text: buildClientPreviewReview(
+          business,
           rating,
           tone,
-          keywords:        [],
-          sessionId,
-          minuteTimestamp, // ← server uses the same minute seed
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.suggestions?.length) {
-        setSuggestions(data.suggestions);
-        setSelectedIdx(0);
-        setEditedText(data.suggestions[0].text);
+          [],
+          minuteTimestamp,
+          i,
+          language
+        ),
+        tone,
+        rating,
+        keywords: [] as string[],
+      }));
+      setSuggestions(preview);
+      setSelectedIdx(0);
+      setEditedText(preview[0].text);
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessId: business._id === "demo" ? "000000000000000000000000" : business._id,
+            rating,
+            tone,
+            reviewLanguage: language,
+            keywords: [],
+            sessionId,
+            minuteTimestamp,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.suggestions?.length) {
+          setSuggestions(data.suggestions);
+          setSelectedIdx(0);
+          setEditedText(data.suggestions[0].text);
+        }
+      } catch {
+        /* keep client preview */
+      } finally {
+        setLoading(false);
+        setStep("suggestions");
       }
-      // else keep the client-generated preview
-    } catch {
-      // keep client preview — already shown above
-    } finally {
-      setLoading(false);
-      setStep("suggestions");
-    }
-  }, [business, rating, tone, sessionId, minuteTimestamp]);
+    },
+    [business, rating, tone, reviewLanguage, sessionId, minuteTimestamp]
+  );
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleCopy() {
@@ -566,7 +388,7 @@ export default function ReviewPage() {
       <div className="fixed inset-0 bg-mesh-gradient pointer-events-none opacity-40" />
       <div className="fixed top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative z-10 max-w-md mx-auto px-5 pt-8 pb-16">
+      <div className="relative z-10 w-full max-w-md mx-auto px-4 sm:px-5 pt-6 sm:pt-8 pb-20 safe-area-pb">
 
         {/* Business header */}
         <div className="text-center mb-8">
@@ -641,6 +463,34 @@ export default function ReviewPage() {
               </div>
             </div>
 
+            {/* Review language */}
+            <div className="glass rounded-2xl p-5">
+              <p className="text-gray-400 text-sm font-medium mb-3 flex items-center gap-2">
+                <Languages className="w-4 h-4 text-brand-400 flex-shrink-0" />
+                Review language
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {REVIEW_LANGUAGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setReviewLanguage(opt.value)}
+                    className={`p-3 rounded-xl border text-left transition-all duration-200 disabled:opacity-50 ${
+                      reviewLanguage === opt.value
+                        ? "bg-brand-500/15 border-brand-500 shadow-glow"
+                        : "bg-surface-card border-surface-border hover:border-brand-500/40"
+                    }`}
+                  >
+                    <div className={`text-sm font-semibold ${reviewLanguage === opt.value ? "text-white" : "text-gray-300"}`}>
+                      {opt.label}
+                    </div>
+                    <div className="text-gray-500 text-xs mt-0.5">{opt.hint}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Refresh cadence hint */}
             <div className="flex items-center justify-center gap-2 text-gray-600 text-xs">
               <Clock className="w-3.5 h-3.5" />
@@ -652,7 +502,8 @@ export default function ReviewPage() {
 
             {/* Generate button */}
             <button
-              onClick={generateSuggestions}
+              type="button"
+              onClick={() => void generateSuggestions()}
               disabled={loading}
               className="btn-primary w-full flex items-center justify-center gap-2 py-4 text-base disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -677,8 +528,8 @@ export default function ReviewPage() {
           <div className="space-y-4 animate-fade-up">
 
             {/* Summary bar */}
-            <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-1">
+            <div className="glass rounded-xl px-3 sm:px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-1 flex-wrap">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Star key={s}
                     className={`w-4 h-4 ${s <= rating ? "text-gold fill-gold" : "text-gray-700"}`}
@@ -688,14 +539,14 @@ export default function ReviewPage() {
                   {RATING_LABELS[rating]}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-xs">
+              <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                <span className="text-gray-500 text-xs truncate">
                   {TONES.find((t) => t.value === tone)?.emoji}{" "}
                   {TONES.find((t) => t.value === tone)?.label}
                 </span>
                 <button
                   onClick={() => setStep("select")}
-                  className="text-brand-400 text-xs hover:text-brand-300 flex items-center gap-0.5"
+                  className="text-brand-400 text-xs hover:text-brand-300 flex items-center gap-0.5 flex-shrink-0"
                 >
                   <ArrowLeft className="w-3 h-3" /> Change
                 </button>
@@ -703,8 +554,8 @@ export default function ReviewPage() {
             </div>
 
             {/* Countdown + refresh */}
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-1.5 text-gray-500 text-xs justify-center sm:justify-start">
                 <Clock className="w-3.5 h-3.5" />
                 New suggestions in{" "}
                 <span className="text-brand-400 font-mono font-semibold tabular-nums">
@@ -712,13 +563,42 @@ export default function ReviewPage() {
                 </span>
               </div>
               <button
-                onClick={generateSuggestions}
+                type="button"
+                onClick={() => void generateSuggestions()}
                 disabled={loading}
-                className="flex items-center gap-1.5 text-brand-400 text-xs hover:text-brand-300 disabled:opacity-40 transition-colors"
+                className="flex items-center justify-center sm:justify-end gap-1.5 text-brand-400 text-xs hover:text-brand-300 disabled:opacity-40 transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh now
               </button>
+            </div>
+
+            <div className="glass rounded-xl px-3 py-3 border border-surface-border">
+              <p className="text-gray-500 text-xs font-medium mb-2 flex items-center gap-1.5">
+                <Languages className="w-3.5 h-3.5 text-brand-400" />
+                Language
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {REVIEW_LANGUAGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      if (opt.value === reviewLanguage) return;
+                      setReviewLanguage(opt.value);
+                      void generateSuggestions(opt.value);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all disabled:opacity-50 ${
+                      reviewLanguage === opt.value
+                        ? "bg-brand-500/20 border-brand-500 text-brand-300"
+                        : "bg-surface-card border-surface-border text-gray-400 hover:border-brand-500/40"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Suggestion cards */}

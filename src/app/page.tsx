@@ -14,35 +14,35 @@ export default function HomePage() {
       </div>
 
       {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
+      <nav className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 sm:py-5 max-w-6xl mx-auto safe-area-pt">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center flex-shrink-0">
             <Star className="w-4 h-4 text-white fill-white" />
           </div>
-          <span className="font-display font-bold text-xl text-white">ReviewGenius</span>
+          <span className="font-display font-bold text-lg sm:text-xl text-white truncate">ReviewGenius</span>
         </div>
         <Link
           href="/dashboard"
-          className="btn-secondary text-sm px-4 py-2 flex items-center gap-2"
+          className="btn-secondary text-sm px-4 py-2.5 flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           Dashboard <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
       {/* Hero */}
-      <section className="relative z-10 text-center px-6 pt-16 pb-20 max-w-4xl mx-auto">
+      <section className="relative z-10 text-center px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-20 max-w-4xl mx-auto">
         <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/30 text-brand-300 text-sm font-medium px-4 py-2 rounded-full mb-8 animate-fade-in">
           <Sparkles className="w-3.5 h-3.5" />
           AI-Powered Review Generation
         </div>
 
-        <h1 className="font-display text-5xl md:text-7xl font-bold text-white leading-tight mb-6 animate-fade-up">
+        <h1 className="font-display text-3xl sm:text-5xl md:text-7xl font-bold text-white leading-tight mb-6 animate-fade-up">
           Turn Every Customer
           <br />
           Into a <span className="gradient-text">5-Star Review</span>
         </h1>
 
-        <p className="text-lg md:text-xl text-gray-400 leading-relaxed mb-10 max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: "0.1s" }}>
+        <p className="text-base sm:text-lg md:text-xl text-gray-400 leading-relaxed mb-10 max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: "0.1s" }}>
           Generate unique, authentic Google Business review text with AI.
           Customers scan your QR code, choose their feedback style, and submit
           a genuine review in seconds.
@@ -62,7 +62,7 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="relative z-10 px-6 py-20 max-w-6xl mx-auto">
+      <section className="relative z-10 px-4 sm:px-6 py-14 sm:py-20 max-w-6xl mx-auto">
         <h2 className="font-display text-3xl md:text-4xl font-bold text-center text-white mb-4">
           How It Works
         </h2>
@@ -70,7 +70,7 @@ export default function HomePage() {
           Three simple steps to get authentic reviews from happy customers.
         </p>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {[
             {
               icon: QrCode,
@@ -112,11 +112,11 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="relative z-10 px-6 py-16 max-w-6xl mx-auto">
-        <div className="glass rounded-3xl p-8 md:p-12 border border-brand-500/20">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
+      <section className="relative z-10 px-4 sm:px-6 py-12 sm:py-16 max-w-6xl mx-auto">
+        <div className="glass rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-12 border border-brand-500/20">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-10 items-center">
             <div>
-              <h2 className="font-display text-3xl font-bold text-white mb-6">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-6">
                 Why ReviewGenius?
               </h2>
               <div className="space-y-4">
@@ -170,7 +170,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="relative z-10 text-center px-6 py-20">
+      <section className="relative z-10 text-center px-4 sm:px-6 py-14 sm:py-20 safe-area-pb">
         <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
           Ready to boost your reviews?
         </h2>
@@ -183,7 +183,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-surface-border px-6 py-8 text-center">
+      <footer className="relative z-10 border-t border-surface-border px-4 sm:px-6 py-6 sm:py-8 text-center">
         <p className="text-gray-600 text-sm">
           ReviewGenius — AI-powered Google Business Review Generation
         </p>

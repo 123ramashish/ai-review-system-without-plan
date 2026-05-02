@@ -24,6 +24,15 @@ body {
   font-family: 'Satoshi', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: rgba(20, 184, 166, 0.15);
+}
+
+/* Safe area for notched phones (footer CTAs, full-screen sheets) */
+.safe-area-pb {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+.safe-area-pt {
+  padding-top: max(0px, env(safe-area-inset-top, 0px));
 }
 
 h1, h2, h3, h4, h5, h6 {

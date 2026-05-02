@@ -3,6 +3,7 @@ import connectDB from "@/lib/mongodb";
 import Business from "@/models/Business";
 import User from "@/models/User";
 import { generateQRCode } from "@/lib/qr-generator";
+import { requireBusinessAccess, requireSuperAdmin } from "@/lib/verify-admin";
 
 function resolveAppUrl(req: NextRequest): string {
   const forwardedProto = req.headers.get("x-forwarded-proto");
@@ -21,12 +22,16 @@ function resolveAppUrl(req: NextRequest): string {
   return "https://ai-review-system-without-plan.vercel.app";
 }
 
-// GET /api/businesses/[id]
+// GET /api/businesses/[id] — super admin or owning business admin
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const access = await requireBusinessAccess(req, params.id);
+    if (!access) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     await connectDB();
     const business = await Business.findById(params.id).lean();
     if (!business) {
@@ -42,12 +47,16 @@ export async function GET(
   }
 }
 
-// PATCH /api/businesses/[id]
+// PATCH /api/businesses/[id] — super admin only
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await requireSuperAdmin(req);
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     await connectDB();
     const body = await req.json();
 
@@ -79,12 +88,16 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/businesses/[id]
+// DELETE /api/businesses/[id] — super admin only
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await requireSuperAdmin(req);
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     await connectDB();
     await Business.findByIdAndDelete(params.id);
     await User.deleteMany({ businessId: params.id });

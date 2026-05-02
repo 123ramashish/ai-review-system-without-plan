@@ -45,7 +45,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col justify-center items-center p-6 relative overflow-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-surface flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden safe-area-pb">
       <div className="fixed inset-0 bg-mesh-gradient pointer-events-none opacity-30" />
 
       <div className="relative z-10 w-full max-w-md">
@@ -60,7 +60,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <div className="glass rounded-3xl p-8 shadow-2xl backdrop-blur-xl animate-fade-up">
+        <div className="glass rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-fade-up w-full">
           <div className="text-center mb-8">
             <h1 className="font-display text-2xl font-bold text-white mb-2">
               {isSuperAdmin ? "Super Admin Login" : "Business Login"}

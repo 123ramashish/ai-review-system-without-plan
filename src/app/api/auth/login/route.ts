@@ -6,6 +6,13 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
+    if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 503 }
+      );
+    }
+
     const { email, password } = await req.json();
     let tokenPayload: any = null;
 
@@ -39,7 +46,9 @@ export async function POST(req: NextRequest) {
       tokenPayload = { role: "admin", businessId: user?.businessId.toString() };
     }
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || "default_secret");
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || "dev_only_jwt_secret_not_for_production"
+    );
     const token = await new SignJWT(tokenPayload)
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("24h")
